@@ -2891,3 +2891,6 @@ with gr.Blocks(title="RVC WebUI", css=TRAINING_INFO_CSS) as app:
                 gr.Markdown(traceback.format_exc())
 
     if config.iscolab:
+        app.queue(concurrency_count=511, max_size=1022).launch(share=True)
+    else:
+        launch_webui_with_port_fallback(app, config)
