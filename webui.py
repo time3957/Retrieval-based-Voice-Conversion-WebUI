@@ -1855,15 +1855,18 @@ def save_language_choice(language_label):
 
 with gr.Blocks(title="RVC WebUI", css=TRAINING_INFO_CSS) as app:
     gr.Markdown("## RVC WebUI")
-    with gr.Row():
-        language_selector = gr.Dropdown(
-            label="Language / ภาษา",
-            choices=list(LANGUAGE_CODES),
-            value=LANGUAGE_LABELS[get_preferred_language() or "Auto"],
-            interactive=True,
-        )
-        save_language_button = gr.Button("Save language / บันทึกภาษา")
-        language_status = gr.Markdown()
+    with gr.Row(elem_id="language-settings"):
+        with gr.Column(scale=0, min_width=240):
+            language_selector = gr.Dropdown(
+                label="Language / ภาษา",
+                choices=list(LANGUAGE_CODES),
+                value=LANGUAGE_LABELS[get_preferred_language() or "Auto"],
+                interactive=True,
+            )
+        with gr.Column(scale=0, min_width=180):
+            save_language_button = gr.Button("Save / บันทึก", variant="secondary")
+        with gr.Column(scale=1, min_width=220):
+            language_status = gr.Markdown()
         save_language_button.click(
             fn=save_language_choice,
             inputs=[language_selector],
@@ -2888,6 +2891,3 @@ with gr.Blocks(title="RVC WebUI", css=TRAINING_INFO_CSS) as app:
                 gr.Markdown(traceback.format_exc())
 
     if config.iscolab:
-        app.queue(concurrency_count=511, max_size=1022).launch(share=True)
-    else:
-        launch_webui_with_port_fallback(app, config)
