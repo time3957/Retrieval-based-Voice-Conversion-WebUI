@@ -1,0 +1,3 @@
+__pycache__/
+*.py[cod]
+i18n/selected_language.txt

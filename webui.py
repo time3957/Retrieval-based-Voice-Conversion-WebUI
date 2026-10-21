@@ -65,7 +65,11 @@ from train.process_ckpt import (
     merge,
     show_info,
 )
-from i18n.i18n import I18nAuto
+from i18n.i18n import (
+    I18nAuto,
+    get_preferred_language,
+    save_preferred_language,
+)
 import torch, platform
 import numpy as np
 import gradio as gr
@@ -215,6 +219,7 @@ def refresh_weight_choices(previous_names=None, force=False):
 
 names = weight_names()
 pymss_names = PYMSS_MODEL_CHOICES
+pymss_display_to_model = {i18n(name): name for name in pymss_names}
 
 
 def change_choices():
@@ -625,6 +630,17 @@ def run_pymss_separation(
         start_button = button_update(visible=True)
         stop_button = button_update(visible=False)
     yield (last_info, render_pymss_progress(**progress_state), start_button, stop_button)
+
+
+def get_pymss_model_info(display_name):
+    """Keep localized dropdown labels separate from backend model identifiers."""
+    return get_model_info(pymss_display_to_model.get(display_name, display_name))
+
+
+def run_localized_pymss_separation(display_name, *args):
+    """Translate the selected display label back before calling the model runner."""
+    model_name = pymss_display_to_model.get(display_name, display_name)
+    yield from run_pymss_separation(model_name, *args)
 
 
 def stop_pymss_webui():
@@ -1826,8 +1842,49 @@ def change_f0_method(f0method8):
     return {"visible": visible, "__type__": "update"}
 
 
+LANGUAGE_LABELS = {
+    "Auto": "อัตโนมัติ (ภาษาของระบบ)",
+    "th_TH": "ไทย",
+    "en_US": "English",
+}
+LANGUAGE_CODES = {label: code for code, label in LANGUAGE_LABELS.items()}
+
+
+def save_language_choice(language_label):
+    """Save the selected UI language for the next WebUI start."""
+    language = LANGUAGE_CODES.get(language_label)
+    if language is None:
+        return "Unsupported language / ไม่รองรับภาษานี้"
+    try:
+        save_preferred_language(language)
+    except ValueError:
+        return "Unsupported language / ไม่รองรับภาษานี้"
+
+    return (
+        "Saved. Restart WebUI to apply. / บันทึกแล้ว กรุณาปิดแล้วเปิด WebUI ใหม่เพื่อใช้ภาษาที่เลือก"
+    )
+
+
 with gr.Blocks(title="RVC WebUI", css=TRAINING_INFO_CSS) as app:
     gr.Markdown("## RVC WebUI")
+    with gr.Row(elem_id="language-settings"):
+        with gr.Column(scale=0, min_width=240):
+            language_selector = gr.Dropdown(
+                label="Language / ภาษา",
+                choices=list(LANGUAGE_CODES),
+                value=LANGUAGE_LABELS[get_preferred_language() or "Auto"],
+                interactive=True,
+            )
+        with gr.Column(scale=0, min_width=180):
+            save_language_button = gr.Button("Save / บันทึก", variant="secondary")
+        with gr.Column(scale=1, min_width=220):
+            language_status = gr.Markdown()
+        save_language_button.click(
+            fn=save_language_choice,
+            inputs=[language_selector],
+            outputs=[language_status],
+            queue=False,
+        )
     gr.Markdown(
         value=i18n(
             "本软件以MIT协议开源, 作者不对软件具备任何控制力, 使用软件者、传播软件导出的声音者自负全责. <br>如不认可该条款, 则不能使用或引用软件包内任何代码和文件. 详见根目录<b>LICENSE</b>."
@@ -2122,8 +2179,8 @@ with gr.Blocks(title="RVC WebUI", css=TRAINING_INFO_CSS) as app:
                     with gr.Column():
                         model_choose = gr.Dropdown(
                             label=i18n("处理方式"),
-                            choices=pymss_names,
-                            value=pymss_names[0],
+                            choices=[i18n(name) for name in pymss_names],
+                            value=i18n(pymss_names[0]),
                             interactive=True,
                         )
                         model_info = gr.Textbox(
@@ -2132,7 +2189,7 @@ with gr.Blocks(title="RVC WebUI", css=TRAINING_INFO_CSS) as app:
                             interactive=False,
                         )
                         model_choose.change(
-                            get_model_info,
+                            get_pymss_model_info,
                             [model_choose],
                             [model_info],
                             queue=False,
@@ -2155,11 +2212,11 @@ with gr.Blocks(title="RVC WebUI", css=TRAINING_INFO_CSS) as app:
                             i18n("停止分离"), variant="stop", visible=False
                         )
                     pymss_progress = gr.HTML(
-                        value=render_pymss_progress(0, "等待开始", "idle")
+                        value=render_pymss_progress(0, i18n("等待开始"), "idle")
                     )
                     vc_output4 = gr.Textbox(label=i18n("输出信息"))
                     but2.click(
-                        run_pymss_separation,
+                        run_localized_pymss_separation,
                         [
                             model_choose,
                             dir_wav_input,
@@ -2827,10 +2884,19 @@ with gr.Blocks(title="RVC WebUI", css=TRAINING_INFO_CSS) as app:
                     api_name="ckpt_extract",
                 )
 
+        with gr.TabItem("วิธีใช้งานภาษาไทย"):
+            try:
+                guide = read_text("docs/th/quick-start.md")
+                gr.Markdown(value=guide)
+            except Exception:
+                gr.Markdown("เปิดคู่มือภาษาไทยไม่สำเร็จ กรุณาตรวจสอบไฟล์ docs/th/quick-start.md")
+
         tab_faq = i18n("常见问题解答")
         with gr.TabItem(tab_faq):
             try:
-                if tab_faq == "常见问题解答":
+                if i18n.language == "th_TH":
+                    info = read_text("docs/th/faq.md")
+                elif tab_faq == "常见问题解答":
                     info = read_text("docs/cn/faq.md")
                 else:
                     info = read_text("docs/en/faq_en.md")
