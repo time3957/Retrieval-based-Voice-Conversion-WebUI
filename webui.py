@@ -2894,7 +2894,9 @@ with gr.Blocks(title="RVC WebUI", css=TRAINING_INFO_CSS) as app:
         tab_faq = i18n("常见问题解答")
         with gr.TabItem(tab_faq):
             try:
-                if tab_faq == "常见问题解答":
+                if i18n.language == "th_TH":
+                    info = read_text("docs/th/faq.md")
+                elif tab_faq == "常见问题解答":
                     info = read_text("docs/cn/faq.md")
                 else:
                     info = read_text("docs/en/faq_en.md")
