@@ -46,6 +46,11 @@ class ThaiLocaleTests(unittest.TestCase):
         thai = I18nAuto("th_TH")
         self.assertEqual(thai("模型推理"), "แปลงเสียง")
 
+    def test_audio_separation_options_and_initial_status_are_translated(self):
+        thai = I18nAuto("th_TH")
+        for key in ("去混响", "去混响（激进）", "去伴奏", "去伴奏（激进）", "提主旋律", "等待开始"):
+            self.assertNotEqual(thai(key), key)
+
 
 if __name__ == "__main__":
     unittest.main()

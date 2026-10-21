@@ -219,6 +219,7 @@ def refresh_weight_choices(previous_names=None, force=False):
 
 names = weight_names()
 pymss_names = PYMSS_MODEL_CHOICES
+pymss_display_to_model = {i18n(name): name for name in pymss_names}
 
 
 def change_choices():
@@ -629,6 +630,17 @@ def run_pymss_separation(
         start_button = button_update(visible=True)
         stop_button = button_update(visible=False)
     yield (last_info, render_pymss_progress(**progress_state), start_button, stop_button)
+
+
+def get_pymss_model_info(display_name):
+    """Keep localized dropdown labels separate from backend model identifiers."""
+    return get_model_info(pymss_display_to_model.get(display_name, display_name))
+
+
+def run_localized_pymss_separation(display_name, *args):
+    """Translate the selected display label back before calling the model runner."""
+    model_name = pymss_display_to_model.get(display_name, display_name)
+    yield from run_pymss_separation(model_name, *args)
 
 
 def stop_pymss_webui():
@@ -2167,8 +2179,8 @@ with gr.Blocks(title="RVC WebUI", css=TRAINING_INFO_CSS) as app:
                     with gr.Column():
                         model_choose = gr.Dropdown(
                             label=i18n("处理方式"),
-                            choices=pymss_names,
-                            value=pymss_names[0],
+                            choices=[i18n(name) for name in pymss_names],
+                            value=i18n(pymss_names[0]),
                             interactive=True,
                         )
                         model_info = gr.Textbox(
@@ -2177,7 +2189,7 @@ with gr.Blocks(title="RVC WebUI", css=TRAINING_INFO_CSS) as app:
                             interactive=False,
                         )
                         model_choose.change(
-                            get_model_info,
+                            get_pymss_model_info,
                             [model_choose],
                             [model_info],
                             queue=False,
@@ -2200,11 +2212,11 @@ with gr.Blocks(title="RVC WebUI", css=TRAINING_INFO_CSS) as app:
                             i18n("停止分离"), variant="stop", visible=False
                         )
                     pymss_progress = gr.HTML(
-                        value=render_pymss_progress(0, "等待开始", "idle")
+                        value=render_pymss_progress(0, i18n("等待开始"), "idle")
                     )
                     vc_output4 = gr.Textbox(label=i18n("输出信息"))
                     but2.click(
-                        run_pymss_separation,
+                        run_localized_pymss_separation,
                         [
                             model_choose,
                             dir_wav_input,
